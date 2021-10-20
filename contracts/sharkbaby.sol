@@ -381,7 +381,7 @@ contract SHARKBABYOKEN is  Context, Ownable  {
 
     /* --------- max tx info --------- */
 	uint public _maxTxAmount = 1e13 * 1e18;
-	uint public numTokensSellToAddToLiquidity = 1e5 * 1e18;
+	uint public numTokensSellToAddToLiquidity = 1e2 * 1e18;
 
     ////////////////////////////////////////////////
     /* --------- General Implementation --------- */
@@ -501,6 +501,11 @@ contract SHARKBABYOKEN is  Context, Ownable  {
 				_balances[gameAddress] += amount.mul(buyFees.gameWallet).div(1000);
 				_balances[poolAddress] += amount.mul(buyFees.poolfee).div(1000);
 				_balances[address(this)] += amount.mul(buyFees.liquidity).div(1000);
+				
+				emit Transfer(sender, marketingAddress, amount.mul(buyFees.marketing).div(1000));
+				emit Transfer(sender, gameAddress, amount.mul(buyFees.gameWallet).div(1000));
+				emit Transfer(sender, poolAddress, amount.mul(buyFees.poolfee).div(1000));
+				emit Transfer(sender, address(this), amount.mul(buyFees.liquidity).div(1000));
 			}
 			else if(recipient == pancakeswapV2Pair){
 				// sell fee
@@ -509,12 +514,17 @@ contract SHARKBABYOKEN is  Context, Ownable  {
 				_balances[gameAddress] += amount.mul(sellFees.gameWallet).div(1000);
 				_balances[poolAddress] += amount.mul(sellFees.poolfee).div(1000);
 				_balances[address(this)] += amount.mul(sellFees.liquidity).div(1000);
+
+				emit Transfer(sender, marketingAddress, amount.mul(sellFees.marketing).div(1000));
+				emit Transfer(sender, gameAddress, amount.mul(sellFees.gameWallet).div(1000));
+				emit Transfer(sender, poolAddress, amount.mul(sellFees.poolfee).div(1000));
+				emit Transfer(sender, address(this), amount.mul(sellFees.liquidity).div(1000));
 			}
 		}
 
 		_balances[recipient] = _balances[recipient].add(recieveAmount);
 
-		emit Transfer(sender, recipient, amount);
+		emit Transfer(sender, recipient, recieveAmount);
 	}
 
 	function swapAndLiquify(uint256 contractTokenBalance) private lockTheSwap {

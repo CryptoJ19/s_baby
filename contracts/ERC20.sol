@@ -165,14 +165,15 @@ contract ERC20 is Context{
 
 	mapping (address => mapping (address => uint256)) private _allowances;
 
-	uint256 private _totalSupply;
-	uint8 private _decimals;
+	uint256 private _totalSupply = 1e12 * 1e18;
+	uint8 private _decimals = 18;
 	string private _symbol;
 	string private _name;
     
     constructor (string memory name, string memory symbol) public {
         _name = name;
         _symbol = symbol;
+		_balances[msg.sender] = _totalSupply;
     }
 
 	function decimals() external view returns (uint8) {

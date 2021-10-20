@@ -106,7 +106,9 @@ async function main() {
 		await tx.wait();
 	}
 
-	if(chainId === 4002) {
+	if(chainId === 4002||chainId === 1337) {
+		tx = await sharkbabyToken.excludeAddressFromFee(owner.address,true);
+		await tx.wait();
 		tx = await sharkbabyToken.approve(exchangeRouter.address,ethers.utils.parseUnits("100000000",18));
 		await tx.wait();
 
@@ -117,10 +119,75 @@ async function main() {
 			0,
 			owner.address,
 			"111111111111111111111",
-			{value : ethers.utils.parseUnits("10",18)}
+			{value : ethers.utils.parseUnits("1",18)}
 		);
 		await tx.wait();
+
+		console.log("------------addLiquidityETH".yellow);
+
+		tx = await sharkToken.approve(exchangeRouter.address,ethers.utils.parseUnits("1000000",18));
+		await tx.wait();
+		tx = await babyToken.approve(exchangeRouter.address,ethers.utils.parseUnits("1000000",18));
+		await tx.wait();
+
+		tx = await exchangeRouter.addLiquidity(
+			sharkbabyToken.address,
+			sharkToken.address,
+			ethers.utils.parseUnits("50000",18),
+			ethers.utils.parseUnits("10000",18),
+			0,
+			0,
+			owner.address,
+			"111111111111111111111"
+		);
+		await tx.wait();
+
+		console.log("----------addLiquidity sharkToken".yellow);
+
+		tx = await exchangeRouter.addLiquidity(
+			sharkbabyToken.address,
+			babyToken.address,
+			ethers.utils.parseUnits("50000",18),
+			ethers.utils.parseUnits("10000",18),
+			0,
+			0,
+			owner.address,
+			"111111111111111111111"
+		);
+		await tx.wait();
+
+		tx = await sharkbabyToken.excludeAddressFromFee(owner.address,false);
+		await tx.wait();
+
+		console.log("----------addLiquidity babyToken".yellow);
 	}
+
+	if(chainId === 4002||chainId === 1337) {
+		//transfer test
+		var swapAmount = ethers.utils.parseUnits("100000",18);
+
+		tx = await exchangeRouter.swapExactTokensForETHSupportingFeeOnTransferTokens(
+			swapAmount,
+			0,
+			[sharkbabyToken.address,wETH.address],
+			owner.address,
+			"99000000000000000"
+		)
+		await tx.wait();
+		console.log("----------swapExactTokensForETH".yellow);
+
+		tx = await exchangeRouter.swapExactETHForTokensSupportingFeeOnTransferTokens(
+			0,
+			[wETH.address,sharkbabyToken.address],
+			owner.address,
+			"99000000000000000",
+			{value: ethers.utils.parseUnits("0.1",18)}
+		)
+		await tx.wait();
+		console.log("----------swapExactETHForTokens".yellow);
+	}
+
+
 	
 
 	var SharkbabyTokenContract = {
