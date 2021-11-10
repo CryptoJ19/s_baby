@@ -1,6 +1,6 @@
 {
   "_format": "hh-sol-artifact-1",
-  "contractName": "IPancakeswapRouter",
+  "contractName": "IPancakeSwapRouter",
   "sourceName": "contracts/IExchange.sol",
   "abi": [
     {

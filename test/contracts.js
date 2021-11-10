@@ -6,7 +6,7 @@ const {delay, fromBigNum, toBigNum} = require("./utils.js")
 
 var exchangeRouter;
 var exchangeFactory;
-var wETH;
+var wICICB;
 
 var sharkbabyToken;
 var sharkToken;
@@ -17,7 +17,7 @@ var stakingPool;
 var owner;
 var userWallet;
 
-var pancakeswapV2PairContract;
+var ICICBSwapV2PairContract;
 var LPBalance1;
 
 describe("Create UserWallet", function () {
@@ -37,21 +37,21 @@ describe("Create UserWallet", function () {
 describe("Exchange deploy and deploy", function () {
 
   it("Factory deploy", async function () {
-    const Factory = await ethers.getContractFactory("PancakeswapFactory");
+    const Factory = await ethers.getContractFactory("ICICBSwapFactory");
     exchangeFactory = await Factory.deploy(owner.address);
     await exchangeFactory.deployed();
 	console.log(await exchangeFactory.INIT_CODE_PAIR_HASH())
   });
 
-  it("WETH deploy", async function () {
-    const WETH = await ethers.getContractFactory("WETH9");
-    wETH = await WETH.deploy();
-    await wETH.deployed();
+  it("WICICB deploy", async function () {
+    const WICICB = await ethers.getContractFactory("WICICB");
+    wICICB = await WICICB.deploy();
+    await wICICB.deployed();
   });
   
   it("Router deploy", async function () {
-    const Router = await ethers.getContractFactory("PancakeswapRouter");
-    exchangeRouter = await Router.deploy(exchangeFactory.address,wETH.address);
+    const Router = await ethers.getContractFactory("ICICBSwapRouter");
+    exchangeRouter = await Router.deploy(exchangeFactory.address,wICICB.address);
     await exchangeRouter.deployed();
   });
 
@@ -68,8 +68,8 @@ describe("Token contract deploy", function () {
 		await tx.wait();
 
 		//set paircontract 
-		var pairAddress = await sharkbabyToken.pancakeswapV2Pair();
-		pancakeswapV2PairContract = new ethers.Contract(pairAddress,ERC20ABI,owner);
+		var pairAddress = await sharkbabyToken.ICICBSwapV2Pair();
+		ICICBSwapV2PairContract = new ethers.Contract(pairAddress,ERC20ABI,owner);
 		
 		//shark and baby token 
 		const ERC20TOKEN = await ethers.getContractFactory("ERC20");
@@ -88,7 +88,7 @@ describe("Token contract deploy", function () {
 		stakingPool = await Staking.deploy(sharkbabyToken.address, sharkToken.address,babyToken.address);
 		await stakingPool.deployed();
 
-		var tx = await stakingPool.setInitialAddresses(exchangeRouter.address);
+		var tx = await stakingPool.setInitialAddresses(exchangeRouter.address, owner.address);
 		await tx.wait();
 
 		//setFeeAddress
@@ -118,7 +118,7 @@ describe("Token contract deploy", function () {
 		await tx.wait();
 
 		// set LP balance1
-			LPBalance1 = await pancakeswapV2PairContract.balanceOf(owner.address);
+			LPBalance1 = await ICICBSwapV2PairContract.balanceOf(owner.address);
 			
 		//shark,babytoken addliquidity
 			var tx = await sharkbabyToken.approve(
@@ -173,8 +173,20 @@ describe("Token contract deploy", function () {
 
 		console.log(stakingPool.address);
 		tx = await stakingPool
-			.stake(ethers.utils.parseUnits("1000", 18));
-			
+			.stake(ethers.utils.parseUnits("1000", 18),owner.address);
+		tx.wait();
+
+        var getRewardableAmount = await stakingPool.getRewardableAmount();
+        var poolBalance = await sharkbabyToken.balanceOf(stakingPool.address);
+        var totalStakingAmount = await stakingPool.totalStakingAmount();
+
+
+        console.log(getRewardableAmount,fromBigNum(poolBalance,18),fromBigNum(totalStakingAmount,18));
+
+        tx = await stakingPool
+			.stake(ethers.utils.parseUnits("1000", 18),owner.address);
+		tx.wait();
+
 	});
 
 });
@@ -199,7 +211,7 @@ describe("sharkbabyToken General  test", function () {
 		
 		var initsharkbabyBalance = await sharkbabyToken.balanceOf(owner.address);
 		var initETHTokenBalance = await owner.getBalance();
-		var exceptSwapBalance = (await exchangeRouter.getAmountsOut(swapAmount,[sharkbabyToken.address,wETH.address]))[1];
+		var exceptSwapBalance = (await exchangeRouter.getAmountsOut(swapAmount,[sharkbabyToken.address,wICICB.address]))[1];
 
 		var tx = await sharkbabyToken.approve(exchangeRouter.address,swapAmount);
 		await tx.wait();
@@ -207,7 +219,7 @@ describe("sharkbabyToken General  test", function () {
 		tx = await exchangeRouter.swapExactTokensForETHSupportingFeeOnTransferTokens(
 			swapAmount,
 			0,
-			[sharkbabyToken.address,wETH.address],
+			[sharkbabyToken.address,wICICB.address],
 			owner.address,
 			"99000000000000000"
 		)
@@ -235,8 +247,6 @@ describe("sharkbabyToken General  test", function () {
 		
 	});
 	
-
-
 	it("test apy", async () => {
 		var path_1 = [];
         path_1[0] = sharkbabyToken.address;
@@ -244,7 +254,7 @@ describe("sharkbabyToken General  test", function () {
 		
 		// console.log(exchangeRouter);
 		var amountsin = await exchangeRouter.getAmountsIn("100", path_1);
-		// var prouter = await stakingPool.pancakeswapRouter();
+		// var prouter = await stakingPool.ICICBSwapRouter();
 		console.log(amountsin);
 		// var apy = await stakingPool.APY();
 		// console.log(apy);

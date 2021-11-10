@@ -130,6 +130,8 @@ interface IERC20 {
 
     function transfer(address to, uint256 value) external returns (bool);
 
+    function burn(uint amount) external ;
+    
     function transferFrom(
         address from,
         address to,
@@ -147,7 +149,7 @@ contract Staking is Ownable {
     event Withdraw(address staker, uint256 amount);
     //staker inform
     struct Staker {
-        address referal;
+        uint referal;
         uint256 stakingAmount; // staking token amount
         uint256 lastUpdateTime; // last amount updatetime
         uint256 lastStakeUpdateTime; // last Stake updatetime
@@ -160,13 +162,15 @@ contract Staking is Ownable {
     address public rewardTokenAddress_2;
     address public stakeTokenAddress; //specify farming token when contract created
 
+	address public marketingAddress;
+
     uint256 public totalStakingAmount; // total staking token amount
     uint256 public lastUpdateTime; // total stake amount and reward update time
     uint256 public totalStake; // total stake amount
 
     uint256 public stakerNum;
 
-    IPancakeswapRouter public pancakeswapRouter;
+    IPancakeSwapRouter public PancakeSwapRouter;
 
     mapping(address => Staker) public stakers;
 
@@ -223,8 +227,8 @@ contract Staking is Ownable {
 			path_2[0] = stakeTokenAddress;
 			path_2[1] = rewardTokenAddress_2;
 
-			uint256[] memory d1 = pancakeswapRouter.getAmountsIn(_reward1, path_1);
-			uint256[] memory d2 = pancakeswapRouter.getAmountsIn(_reward2, path_2);
+			uint256[] memory d1 = PancakeSwapRouter.getAmountsIn(_reward1, path_1);
+			uint256[] memory d2 = PancakeSwapRouter.getAmountsIn(_reward2, path_2);
 
 			rewardable1 = d1[0];
 			rewardable2 = d2[1];
@@ -295,9 +299,9 @@ contract Staking is Ownable {
     {
         if (
             block.timestamp.sub(stakers[stakerAddress].lastStakeUpdateTime) <
-            30 days
+            42 days
         ) {
-            _fee = 10;
+            _fee = 250;
         } else _fee = 0;
     }
 
@@ -319,12 +323,12 @@ contract Staking is Ownable {
 			path_2[0] = stakeTokenAddress;
 			path_2[1] = rewardTokenAddress_2;
 
-			uint[] memory d1 = pancakeswapRouter.getAmountsOut(
+			uint[] memory d1 = PancakeSwapRouter.getAmountsOut(
 					tokenAmount_1,
 					path_1
 				);
 
-			uint[] memory d2 = pancakeswapRouter.getAmountsOut(
+			uint[] memory d2 = PancakeSwapRouter.getAmountsOut(
 					tokenAmount_2,
 					path_2
 				);
@@ -332,7 +336,7 @@ contract Staking is Ownable {
 			_totalReward1 = _totalReward1 + d1[0];
 			_totalReward2 = _totalReward2 + d2[0];
 		}		
-        uint256 stake = countStake(stakerAddress);
+        uint256 stake = countStake(stakerAddress)+ stakers[stakerAddress].referal;
         _reward_1 = _totalStake == 0
             ? 0
             : _totalReward1.mul(stake).div(_totalStake);
@@ -343,24 +347,38 @@ contract Staking is Ownable {
 
     /* ----------------- actions ----------------- */
 
-    function stake(uint256 amount) external {
+    function stake(uint256 amount ,address referrar) external {
         address stakerAddress = msg.sender;
         if (stakers[stakerAddress].lastUpdateTime == 0) stakerNum++;
         
         stakers[stakerAddress].stake = countStake(stakerAddress);
-        stakers[stakerAddress].stakingAmount += amount;
+        
+        stakers[stakerAddress].stakingAmount += amount.mul(990).div(1000);
         stakers[stakerAddress].lastUpdateTime = block.timestamp;
         stakers[stakerAddress].lastStakeUpdateTime = block.timestamp;
+        
+
+        if(referrar != address(0) && referrar != stakerAddress) {
+            uint referalReward = amount * 1 days;
+            stakers[referrar].referal += referalReward;
+            totalStake += referalReward;
+        }
 
         updateTotalStake();
 
 		IERC20(stakeTokenAddress).transferFrom(
 			stakerAddress,
 			address(this),
-			amount
+			amount.mul(995).div(1000)
 		);
 
-        totalStakingAmount = totalStakingAmount + amount;
+        IERC20(stakeTokenAddress).transferFrom(
+            stakerAddress,
+			marketingAddress,
+			amount.mul(5).div(1000)
+		);
+
+        totalStakingAmount = totalStakingAmount + amount.mul(995).div(1000);
         emit Stake(stakerAddress, amount);
     }
 
@@ -379,10 +397,17 @@ contract Staking is Ownable {
         updateTotalStake();
         totalStakingAmount = totalStakingAmount - amount;
 
-        IERC20(stakeTokenAddress).transfer(
-            owner(),
-            amount.mul(withdrawFee).div(1000)
-        );
+        if(withdrawFee > 0){
+            IERC20(stakeTokenAddress).burn(
+                amount.mul(4).div(1000)
+            );
+            
+            IERC20(stakeTokenAddress).transfer(
+                marketingAddress,
+                amount.mul(5).div(1000)
+            );
+        }
+
         IERC20(stakeTokenAddress).transfer(
             stakerAddress,
             amount.mul(1000 - withdrawFee).div(1000)
@@ -394,7 +419,7 @@ contract Staking is Ownable {
         address stakerAddress = msg.sender;
 
         updateTotalStake();
-        uint256 _stake = countStake(stakerAddress);
+        uint256 _stake = countStake(stakerAddress) + stakers[stakerAddress].referal;
         (uint256 _reward_1, uint256 _reward_2) = countReward(stakerAddress);
 
         require(_reward_1 > 0, "staking : reward amount is 0");
@@ -409,6 +434,7 @@ contract Staking is Ownable {
         totalStake -= _stake;
 
         stakers[stakerAddress].stake = 0;
+        stakers[stakerAddress].referal = 0;
         stakers[stakerAddress].lastUpdateTime = block.timestamp;
 
         emit Reward(stakerAddress, _reward_1, _reward_2);
@@ -417,11 +443,12 @@ contract Staking is Ownable {
     /* ----------------- swap for token ----------------- */
 
 
-    function setInitialAddresses(address _RouterAddress) external onlyOwner {
-        IPancakeswapRouter _pancakeswapRouter = IPancakeswapRouter(
+    function setInitialAddresses(address _RouterAddress, address _marketingAddress) external onlyOwner {
+        marketingAddress = _marketingAddress;
+        IPancakeSwapRouter _PancakeSwapRouter = IPancakeSwapRouter(
             _RouterAddress
         );
-        pancakeswapRouter = _pancakeswapRouter;
+        PancakeSwapRouter = _PancakeSwapRouter;
     }
 
     function getRewardableAmount()
@@ -458,13 +485,13 @@ contract Staking is Ownable {
         path_2[1] = rewardTokenAddress_2;
 
         IERC20(stakeTokenAddress).approve(
-            address(pancakeswapRouter),
+            address(PancakeSwapRouter),
             tokenAmount_1 + tokenAmount_2
         );
 
         // make the swap
 
-        pancakeswapRouter.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+        PancakeSwapRouter.swapExactTokensForTokensSupportingFeeOnTransferTokens(
                 tokenAmount_1,
                 0, // accept any amount of usdt
                 path_1,
@@ -472,7 +499,7 @@ contract Staking is Ownable {
                 block.timestamp
             );
 
-        pancakeswapRouter.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+        PancakeSwapRouter.swapExactTokensForTokensSupportingFeeOnTransferTokens(
                 tokenAmount_2,
                 0, // accept any amount of usdt
                 path_2,

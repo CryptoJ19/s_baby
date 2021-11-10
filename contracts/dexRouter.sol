@@ -2,7 +2,7 @@
 
 pragma solidity ^0.6.12;
 
-interface IPancakeswapFactory {
+interface IICICBSwapFactory {
     event PairCreated(address indexed token0, address indexed token1, address pair, uint);
 
     function feeTo() external view returns (address);
@@ -18,7 +18,7 @@ interface IPancakeswapFactory {
     function setFeeToSetter(address) external;
 }
 
-interface IPancakeswapPair {
+interface IICICBSwapPair {
     event Approval(address indexed owner, address indexed spender, uint value);
     event Transfer(address indexed from, address indexed to, uint value);
 
@@ -69,7 +69,7 @@ interface IPancakeswapPair {
     function initialize(address, address) external;
 }
 
-interface IPancakeswapRouter{
+interface IICICBSwapRouter{
     function factory() external pure returns (address);
     function WETH() external pure returns (address);
 
@@ -223,14 +223,14 @@ interface IWETH {
     function withdraw(uint) external;
 }
 
-contract PancakeswapRouter is IPancakeswapRouter {
+contract ICICBSwapRouter is IICICBSwapRouter {
     using SafeMath for uint;
 
     address public immutable override factory;
     address public immutable override WETH;
 
     modifier ensure(uint deadline) {
-        require(deadline >= block.timestamp, 'PancakeswapRouter: EXPIRED');
+        require(deadline >= block.timestamp, 'ICICBSwapRouter: EXPIRED');
         _;
     }
 
@@ -253,21 +253,21 @@ contract PancakeswapRouter is IPancakeswapRouter {
         uint amountBMin
     ) internal virtual returns (uint amountA, uint amountB) {
         // create the pair if it doesn't exist yet
-        if (IPancakeswapFactory(factory).getPair(tokenA, tokenB) == address(0)) {
-            IPancakeswapFactory(factory).createPair(tokenA, tokenB);
+        if (IICICBSwapFactory(factory).getPair(tokenA, tokenB) == address(0)) {
+            IICICBSwapFactory(factory).createPair(tokenA, tokenB);
         }
-        (uint reserveA, uint reserveB) = PancakeswapLibrary.getReserves(factory, tokenA, tokenB);
+        (uint reserveA, uint reserveB) = ICICBSwapLibrary.getReserves(factory, tokenA, tokenB);
         if (reserveA == 0 && reserveB == 0) {
             (amountA, amountB) = (amountADesired, amountBDesired);
         } else {
-            uint amountBOptimal = PancakeswapLibrary.quote(amountADesired, reserveA, reserveB);
+            uint amountBOptimal = ICICBSwapLibrary.quote(amountADesired, reserveA, reserveB);
             if (amountBOptimal <= amountBDesired) {
-                require(amountBOptimal >= amountBMin, 'PancakeswapRouter: INSUFFICIENT_B_AMOUNT');
+                require(amountBOptimal >= amountBMin, 'ICICBSwapRouter: INSUFFICIENT_B_AMOUNT');
                 (amountA, amountB) = (amountADesired, amountBOptimal);
             } else {
-                uint amountAOptimal = PancakeswapLibrary.quote(amountBDesired, reserveB, reserveA);
+                uint amountAOptimal = ICICBSwapLibrary.quote(amountBDesired, reserveB, reserveA);
                 assert(amountAOptimal <= amountADesired);
-                require(amountAOptimal >= amountAMin, 'PancakeswapRouter: INSUFFICIENT_A_AMOUNT');
+                require(amountAOptimal >= amountAMin, 'ICICBSwapRouter: INSUFFICIENT_A_AMOUNT');
                 (amountA, amountB) = (amountAOptimal, amountBDesired);
             }
         }
@@ -283,10 +283,10 @@ contract PancakeswapRouter is IPancakeswapRouter {
         uint deadline
     ) external virtual override ensure(deadline) returns (uint amountA, uint amountB, uint liquidity) {
         (amountA, amountB) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
-        address pair = PancakeswapLibrary.pairFor(factory, tokenA, tokenB);
+        address pair = ICICBSwapLibrary.pairFor(factory, tokenA, tokenB);
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
         TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
-        liquidity = IPancakeswapPair(pair).mint(to);
+        liquidity = IICICBSwapPair(pair).mint(to);
     }
     function addLiquidityETH(
         address token,
@@ -304,11 +304,11 @@ contract PancakeswapRouter is IPancakeswapRouter {
             amountTokenMin,
             amountETHMin
         );
-        address pair = PancakeswapLibrary.pairFor(factory, token, WETH);
+        address pair = ICICBSwapLibrary.pairFor(factory, token, WETH);
         TransferHelper.safeTransferFrom(token, msg.sender, pair, amountToken);
         IWETH(WETH).deposit{value: amountETH}();
         assert(IWETH(WETH).transfer(pair, amountETH));
-        liquidity = IPancakeswapPair(pair).mint(to);
+        liquidity = IICICBSwapPair(pair).mint(to);
         // refund dust eth, if any
         if (msg.value > amountETH) TransferHelper.safeTransferETH(msg.sender, msg.value - amountETH);
     }
@@ -323,13 +323,13 @@ contract PancakeswapRouter is IPancakeswapRouter {
         address to,
         uint deadline
     ) public virtual override ensure(deadline) returns (uint amountA, uint amountB) {
-        address pair = PancakeswapLibrary.pairFor(factory, tokenA, tokenB);
-        IPancakeswapPair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
-        (uint amount0, uint amount1) = IPancakeswapPair(pair).burn(to);
-        (address token0,) = PancakeswapLibrary.sortTokens(tokenA, tokenB);
+        address pair = ICICBSwapLibrary.pairFor(factory, tokenA, tokenB);
+        IICICBSwapPair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
+        (uint amount0, uint amount1) = IICICBSwapPair(pair).burn(to);
+        (address token0,) = ICICBSwapLibrary.sortTokens(tokenA, tokenB);
         (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);
-        require(amountA >= amountAMin, 'PancakeswapRouter: INSUFFICIENT_A_AMOUNT');
-        require(amountB >= amountBMin, 'PancakeswapRouter: INSUFFICIENT_B_AMOUNT');
+        require(amountA >= amountAMin, 'ICICBSwapRouter: INSUFFICIENT_A_AMOUNT');
+        require(amountB >= amountBMin, 'ICICBSwapRouter: INSUFFICIENT_B_AMOUNT');
     }
     function removeLiquidityETH(
         address token,
@@ -362,9 +362,9 @@ contract PancakeswapRouter is IPancakeswapRouter {
         uint deadline,
         bool approveMax, uint8 v, bytes32 r, bytes32 s
     ) external virtual override returns (uint amountA, uint amountB) {
-        address pair = PancakeswapLibrary.pairFor(factory, tokenA, tokenB);
+        address pair = ICICBSwapLibrary.pairFor(factory, tokenA, tokenB);
         uint value = approveMax ? uint(-1) : liquidity;
-        IPancakeswapPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        IICICBSwapPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         (amountA, amountB) = removeLiquidity(tokenA, tokenB, liquidity, amountAMin, amountBMin, to, deadline);
     }
     function removeLiquidityETHWithPermit(
@@ -376,9 +376,9 @@ contract PancakeswapRouter is IPancakeswapRouter {
         uint deadline,
         bool approveMax, uint8 v, bytes32 r, bytes32 s
     ) external virtual override returns (uint amountToken, uint amountETH) {
-        address pair = PancakeswapLibrary.pairFor(factory, token, WETH);
+        address pair = ICICBSwapLibrary.pairFor(factory, token, WETH);
         uint value = approveMax ? uint(-1) : liquidity;
-        IPancakeswapPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        IICICBSwapPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         (amountToken, amountETH) = removeLiquidityETH(token, liquidity, amountTokenMin, amountETHMin, to, deadline);
     }
 
@@ -413,9 +413,9 @@ contract PancakeswapRouter is IPancakeswapRouter {
         uint deadline,
         bool approveMax, uint8 v, bytes32 r, bytes32 s
     ) external virtual override returns (uint amountETH) {
-        address pair = PancakeswapLibrary.pairFor(factory, token, WETH);
+        address pair = ICICBSwapLibrary.pairFor(factory, token, WETH);
         uint value = approveMax ? uint(-1) : liquidity;
-        IPancakeswapPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        IICICBSwapPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         amountETH = removeLiquidityETHSupportingFeeOnTransferTokens(
             token, liquidity, amountTokenMin, amountETHMin, to, deadline
         );
@@ -426,11 +426,11 @@ contract PancakeswapRouter is IPancakeswapRouter {
     function _swap(uint[] memory amounts, address[] memory path, address _to) internal virtual {
         for (uint i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
-            (address token0,) = PancakeswapLibrary.sortTokens(input, output);
+            (address token0,) = ICICBSwapLibrary.sortTokens(input, output);
             uint amountOut = amounts[i + 1];
             (uint amount0Out, uint amount1Out) = input == token0 ? (uint(0), amountOut) : (amountOut, uint(0));
-            address to = i < path.length - 2 ? PancakeswapLibrary.pairFor(factory, output, path[i + 2]) : _to;
-            IPancakeswapPair(PancakeswapLibrary.pairFor(factory, input, output)).swap(
+            address to = i < path.length - 2 ? ICICBSwapLibrary.pairFor(factory, output, path[i + 2]) : _to;
+            IICICBSwapPair(ICICBSwapLibrary.pairFor(factory, input, output)).swap(
                 amount0Out, amount1Out, to, new bytes(0)
             );
         }
@@ -443,10 +443,10 @@ contract PancakeswapRouter is IPancakeswapRouter {
         address to,
         uint deadline
     ) external virtual override ensure(deadline) returns (uint[] memory amounts) {
-        amounts = PancakeswapLibrary.getAmountsOut(factory, amountIn, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, 'PancakeswapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        amounts = ICICBSwapLibrary.getAmountsOut(factory, amountIn, path);
+        require(amounts[amounts.length - 1] >= amountOutMin, 'ICICBSwapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, PancakeswapLibrary.pairFor(factory, path[0], path[1]), amounts[0]
+            path[0], msg.sender, ICICBSwapLibrary.pairFor(factory, path[0], path[1]), amounts[0]
         );
         _swap(amounts, path, to);
     }
@@ -458,10 +458,10 @@ contract PancakeswapRouter is IPancakeswapRouter {
         address to,
         uint deadline
     ) external virtual override ensure(deadline) returns (uint[] memory amounts) {
-        amounts = PancakeswapLibrary.getAmountsIn(factory, amountOut, path);
-        require(amounts[0] <= amountInMax, 'PancakeswapRouter: EXCESSIVE_INPUT_AMOUNT');
+        amounts = ICICBSwapLibrary.getAmountsIn(factory, amountOut, path);
+        require(amounts[0] <= amountInMax, 'ICICBSwapRouter: EXCESSIVE_INPUT_AMOUNT');
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, PancakeswapLibrary.pairFor(factory, path[0], path[1]), amounts[0]
+            path[0], msg.sender, ICICBSwapLibrary.pairFor(factory, path[0], path[1]), amounts[0]
         );
         _swap(amounts, path, to);
     }
@@ -474,11 +474,11 @@ contract PancakeswapRouter is IPancakeswapRouter {
         ensure(deadline)
         returns (uint[] memory amounts)
     {
-        require(path[0] == WETH, 'PancakeswapRouter: INVALID_PATH');
-        amounts = PancakeswapLibrary.getAmountsOut(factory, msg.value, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, 'PancakeswapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        require(path[0] == WETH, 'ICICBSwapRouter: INVALID_PATH');
+        amounts = ICICBSwapLibrary.getAmountsOut(factory, msg.value, path);
+        require(amounts[amounts.length - 1] >= amountOutMin, 'ICICBSwapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
         IWETH(WETH).deposit{value: amounts[0]}();
-        assert(IWETH(WETH).transfer(PancakeswapLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
+        assert(IWETH(WETH).transfer(ICICBSwapLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
     }
 
@@ -489,11 +489,11 @@ contract PancakeswapRouter is IPancakeswapRouter {
         ensure(deadline)
         returns (uint[] memory amounts)
     {
-        require(path[path.length - 1] == WETH, 'PancakeswapRouter: INVALID_PATH');
-        amounts = PancakeswapLibrary.getAmountsIn(factory, amountOut, path);
-        require(amounts[0] <= amountInMax, 'PancakeswapRouter: EXCESSIVE_INPUT_AMOUNT');
+        require(path[path.length - 1] == WETH, 'ICICBSwapRouter: INVALID_PATH');
+        amounts = ICICBSwapLibrary.getAmountsIn(factory, amountOut, path);
+        require(amounts[0] <= amountInMax, 'ICICBSwapRouter: EXCESSIVE_INPUT_AMOUNT');
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, PancakeswapLibrary.pairFor(factory, path[0], path[1]), amounts[0]
+            path[0], msg.sender, ICICBSwapLibrary.pairFor(factory, path[0], path[1]), amounts[0]
         );
         _swap(amounts, path, address(this));
         IWETH(WETH).withdraw(amounts[amounts.length - 1]);
@@ -507,11 +507,11 @@ contract PancakeswapRouter is IPancakeswapRouter {
         ensure(deadline)
         returns (uint[] memory amounts)
     {
-        require(path[path.length - 1] == WETH, 'PancakeswapRouter: INVALID_PATH');
-        amounts = PancakeswapLibrary.getAmountsOut(factory, amountIn, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, 'PancakeswapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        require(path[path.length - 1] == WETH, 'ICICBSwapRouter: INVALID_PATH');
+        amounts = ICICBSwapLibrary.getAmountsOut(factory, amountIn, path);
+        require(amounts[amounts.length - 1] >= amountOutMin, 'ICICBSwapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, PancakeswapLibrary.pairFor(factory, path[0], path[1]), amounts[0]
+            path[0], msg.sender, ICICBSwapLibrary.pairFor(factory, path[0], path[1]), amounts[0]
         );
         _swap(amounts, path, address(this));
         IWETH(WETH).withdraw(amounts[amounts.length - 1]);
@@ -526,11 +526,11 @@ contract PancakeswapRouter is IPancakeswapRouter {
         ensure(deadline)
         returns (uint[] memory amounts)
     {
-        require(path[0] == WETH, 'PancakeswapRouter: INVALID_PATH');
-        amounts = PancakeswapLibrary.getAmountsIn(factory, amountOut, path);
-        require(amounts[0] <= msg.value, 'PancakeswapRouter: EXCESSIVE_INPUT_AMOUNT');
+        require(path[0] == WETH, 'ICICBSwapRouter: INVALID_PATH');
+        amounts = ICICBSwapLibrary.getAmountsIn(factory, amountOut, path);
+        require(amounts[0] <= msg.value, 'ICICBSwapRouter: EXCESSIVE_INPUT_AMOUNT');
         IWETH(WETH).deposit{value: amounts[0]}();
-        assert(IWETH(WETH).transfer(PancakeswapLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
+        assert(IWETH(WETH).transfer(ICICBSwapLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
         // refund dust eth, if any
         if (msg.value > amounts[0]) TransferHelper.safeTransferETH(msg.sender, msg.value - amounts[0]);
@@ -541,18 +541,18 @@ contract PancakeswapRouter is IPancakeswapRouter {
     function _swapSupportingFeeOnTransferTokens(address[] memory path, address _to) internal virtual {
         for (uint i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
-            (address token0,) = PancakeswapLibrary.sortTokens(input, output);
-            IPancakeswapPair pair = IPancakeswapPair(PancakeswapLibrary.pairFor(factory, input, output));
+            (address token0,) = ICICBSwapLibrary.sortTokens(input, output);
+            IICICBSwapPair pair = IICICBSwapPair(ICICBSwapLibrary.pairFor(factory, input, output));
             uint amountInput;
             uint amountOutput;
             { // scope to avoid stack too deep errors
             (uint reserve0, uint reserve1,) = pair.getReserves();
             (uint reserveInput, uint reserveOutput) = input == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
             amountInput = IERC20(input).balanceOf(address(pair)).sub(reserveInput);
-            amountOutput = PancakeswapLibrary.getAmountOut(amountInput, reserveInput, reserveOutput);
+            amountOutput = ICICBSwapLibrary.getAmountOut(amountInput, reserveInput, reserveOutput);
             }
             (uint amount0Out, uint amount1Out) = input == token0 ? (uint(0), amountOutput) : (amountOutput, uint(0));
-            address to = i < path.length - 2 ? PancakeswapLibrary.pairFor(factory, output, path[i + 2]) : _to;
+            address to = i < path.length - 2 ? ICICBSwapLibrary.pairFor(factory, output, path[i + 2]) : _to;
             pair.swap(amount0Out, amount1Out, to, new bytes(0));
         }
     }
@@ -565,13 +565,13 @@ contract PancakeswapRouter is IPancakeswapRouter {
         uint deadline
     ) external virtual override ensure(deadline) {
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, PancakeswapLibrary.pairFor(factory, path[0], path[1]), amountIn
+            path[0], msg.sender, ICICBSwapLibrary.pairFor(factory, path[0], path[1]), amountIn
         );
         uint balanceBefore = IERC20(path[path.length - 1]).balanceOf(to);
         _swapSupportingFeeOnTransferTokens(path, to);
         require(
             IERC20(path[path.length - 1]).balanceOf(to).sub(balanceBefore) >= amountOutMin,
-            'PancakeswapRouter: INSUFFICIENT_OUTPUT_AMOUNT'
+            'ICICBSwapRouter: INSUFFICIENT_OUTPUT_AMOUNT'
         );
     }
 
@@ -587,15 +587,15 @@ contract PancakeswapRouter is IPancakeswapRouter {
         payable
         ensure(deadline)
     {
-        require(path[0] == WETH, 'PancakeswapRouter: INVALID_PATH');
+        require(path[0] == WETH, 'ICICBSwapRouter: INVALID_PATH');
         uint amountIn = msg.value;
         IWETH(WETH).deposit{value: amountIn}();
-        assert(IWETH(WETH).transfer(PancakeswapLibrary.pairFor(factory, path[0], path[1]), amountIn));
+        assert(IWETH(WETH).transfer(ICICBSwapLibrary.pairFor(factory, path[0], path[1]), amountIn));
         uint balanceBefore = IERC20(path[path.length - 1]).balanceOf(to);
         _swapSupportingFeeOnTransferTokens(path, to);
         require(
             IERC20(path[path.length - 1]).balanceOf(to).sub(balanceBefore) >= amountOutMin,
-            'PancakeswapRouter: INSUFFICIENT_OUTPUT_AMOUNT'
+            'ICICBSwapRouter: INSUFFICIENT_OUTPUT_AMOUNT'
         );
     }
 
@@ -611,20 +611,20 @@ contract PancakeswapRouter is IPancakeswapRouter {
         override
         ensure(deadline)
     {
-        require(path[path.length - 1] == WETH, 'PancakeswapRouter: INVALID_PATH');
+        require(path[path.length - 1] == WETH, 'ICICBSwapRouter: INVALID_PATH');
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, PancakeswapLibrary.pairFor(factory, path[0], path[1]), amountIn
+            path[0], msg.sender, ICICBSwapLibrary.pairFor(factory, path[0], path[1]), amountIn
         );
         _swapSupportingFeeOnTransferTokens(path, address(this));
         uint amountOut = IERC20(WETH).balanceOf(address(this));
-        require(amountOut >= amountOutMin, 'PancakeswapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        require(amountOut >= amountOutMin, 'ICICBSwapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
         IWETH(WETH).withdraw(amountOut);
         TransferHelper.safeTransferETH(to, amountOut);
     }
 
     // **** LIBRARY FUNCTIONS ****
     function quote(uint amountA, uint reserveA, uint reserveB) public pure virtual override returns (uint amountB) {
-        return PancakeswapLibrary.quote(amountA, reserveA, reserveB);
+        return ICICBSwapLibrary.quote(amountA, reserveA, reserveB);
     }
 
     function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut)
@@ -634,7 +634,7 @@ contract PancakeswapRouter is IPancakeswapRouter {
         override
         returns (uint amountOut)
     {
-        return PancakeswapLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
+        return ICICBSwapLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
     }
 
     function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut)
@@ -644,7 +644,7 @@ contract PancakeswapRouter is IPancakeswapRouter {
         override
         returns (uint amountIn)
     {
-        return PancakeswapLibrary.getAmountIn(amountOut, reserveIn, reserveOut);
+        return ICICBSwapLibrary.getAmountIn(amountOut, reserveIn, reserveOut);
     }
 
     function getAmountsOut(uint amountIn, address[] memory path)
@@ -654,7 +654,7 @@ contract PancakeswapRouter is IPancakeswapRouter {
         override
         returns (uint[] memory amounts)
     {
-        return PancakeswapLibrary.getAmountsOut(factory, amountIn, path);
+        return ICICBSwapLibrary.getAmountsOut(factory, amountIn, path);
     }
 
     function getAmountsIn(uint amountOut, address[] memory path)
@@ -664,7 +664,7 @@ contract PancakeswapRouter is IPancakeswapRouter {
         override
         returns (uint[] memory amounts)
     {
-        return PancakeswapLibrary.getAmountsIn(factory, amountOut, path);
+        return ICICBSwapLibrary.getAmountsIn(factory, amountOut, path);
     }
 }
 
@@ -683,15 +683,15 @@ library SafeMath {
     }
 }
 
-library PancakeswapLibrary {
+library ICICBSwapLibrary {
 
     using SafeMath for uint;
 
     // returns sorted token addresses, used to handle return values from pairs sorted in this order
     function sortTokens(address tokenA, address tokenB) internal pure returns (address token0, address token1) {
-        require(tokenA != tokenB, 'PancakeswapLibrary: IDENTICAL_ADDRESSES');
+        require(tokenA != tokenB, 'ICICBSwapLibrary: IDENTICAL_ADDRESSES');
         (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
-        require(token0 != address(0), 'PancakeswapLibrary: ZERO_ADDRESS');
+        require(token0 != address(0), 'ICICBSwapLibrary: ZERO_ADDRESS');
     }
 
     // calculates the CREATE2 address for a pair without making any external calls
@@ -701,28 +701,28 @@ library PancakeswapLibrary {
                 hex'ff',
                 factory,
                 keccak256(abi.encodePacked(token0, token1)),
-                hex'fb7a46a718cbfd9fe763c52da43c16908c7b2a675f869de1deeae162685cd7d4' // init code hash
+                hex'7ee08c75b84d69e0daad65ceb7f5f0619692f677eaa7a76ede7f4df949b815d6' // init code hash
             ))));
     }
 
     // fetches and sorts the reserves for a pair
     function getReserves(address factory, address tokenA, address tokenB) internal view returns (uint reserveA, uint reserveB) {
         (address token0,) = sortTokens(tokenA, tokenB);
-        (uint reserve0, uint reserve1,) = IPancakeswapPair(pairFor(factory, tokenA, tokenB)).getReserves();
+        (uint reserve0, uint reserve1,) = IICICBSwapPair(pairFor(factory, tokenA, tokenB)).getReserves();
         (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
     }
 
     // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
     function quote(uint amountA, uint reserveA, uint reserveB) internal pure returns (uint amountB) {
-        require(amountA > 0, 'PancakeswapLibrary: INSUFFICIENT_AMOUNT');
-        require(reserveA > 0 && reserveB > 0, 'PancakeswapLibrary: INSUFFICIENT_LIQUIDITY');
+        require(amountA > 0, 'ICICBSwapLibrary: INSUFFICIENT_AMOUNT');
+        require(reserveA > 0 && reserveB > 0, 'ICICBSwapLibrary: INSUFFICIENT_LIQUIDITY');
         amountB = amountA.mul(reserveB) / reserveA;
     }
 
     // given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset
     function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) internal pure returns (uint amountOut) {
-        require(amountIn > 0, 'PancakeswapLibrary: INSUFFICIENT_INPUT_AMOUNT');
-        require(reserveIn > 0 && reserveOut > 0, 'PancakeswapLibrary: INSUFFICIENT_LIQUIDITY');
+        require(amountIn > 0, 'ICICBSwapLibrary: INSUFFICIENT_INPUT_AMOUNT');
+        require(reserveIn > 0 && reserveOut > 0, 'ICICBSwapLibrary: INSUFFICIENT_LIQUIDITY');
         uint amountInWithFee = amountIn.mul(997);
         uint numerator = amountInWithFee.mul(reserveOut);
         uint denominator = reserveIn.mul(1000).add(amountInWithFee);
@@ -731,8 +731,8 @@ library PancakeswapLibrary {
 
     // given an output amount of an asset and pair reserves, returns a required input amount of the other asset
     function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut) internal pure returns (uint amountIn) {
-        require(amountOut > 0, 'PancakeswapLibrary: INSUFFICIENT_OUTPUT_AMOUNT');
-        require(reserveIn > 0 && reserveOut > 0, 'PancakeswapLibrary: INSUFFICIENT_LIQUIDITY');
+        require(amountOut > 0, 'ICICBSwapLibrary: INSUFFICIENT_OUTPUT_AMOUNT');
+        require(reserveIn > 0 && reserveOut > 0, 'ICICBSwapLibrary: INSUFFICIENT_LIQUIDITY');
         uint numerator = reserveIn.mul(amountOut).mul(1000);
         uint denominator = reserveOut.sub(amountOut).mul(997);
         amountIn = (numerator / denominator).add(1);
@@ -740,7 +740,7 @@ library PancakeswapLibrary {
 
     // performs chained getAmountOut calculations on any number of pairs
     function getAmountsOut(address factory, uint amountIn, address[] memory path) internal view returns (uint[] memory amounts) {
-        require(path.length >= 2, 'PancakeswapLibrary: INVALID_PATH');
+        require(path.length >= 2, 'ICICBSwapLibrary: INVALID_PATH');
         amounts = new uint[](path.length);
         amounts[0] = amountIn;
         for (uint i; i < path.length - 1; i++) {
@@ -751,7 +751,7 @@ library PancakeswapLibrary {
 
     // performs chained getAmountIn calculations on any number of pairs
     function getAmountsIn(address factory, uint amountOut, address[] memory path) internal view returns (uint[] memory amounts) {
-        require(path.length >= 2, 'PancakeswapLibrary: INVALID_PATH');
+        require(path.length >= 2, 'ICICBSwapLibrary: INVALID_PATH');
         amounts = new uint[](path.length);
         amounts[amounts.length - 1] = amountOut;
         for (uint i = path.length - 1; i > 0; i--) {

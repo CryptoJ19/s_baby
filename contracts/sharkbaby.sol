@@ -361,8 +361,8 @@ contract SHARKBABYOKEN is  Context, Ownable  {
 	address public babyPoolAddress;
 
     /* --------- exchange info --------- */
-	IPancakeswapRouter public pancakeswapRouter;
-	address public pancakeswapV2Pair;
+	IPancakeSwapRouter public PancakeSwapRouter;
+	address public PancakeSwapV2Pair;
 
 	bool inSwapAndLiquify;
 	modifier lockTheSwap {
@@ -387,7 +387,7 @@ contract SHARKBABYOKEN is  Context, Ownable  {
     /* --------- General Implementation --------- */
     ////////////////////////////////////////////////
 
-    constructor () public {
+    constructor (address _RouterAddress) public {
         _name = "sharkbaby";
         _symbol = "SHBY";
         _decimals = 18;
@@ -403,6 +403,10 @@ contract SHARKBABYOKEN is  Context, Ownable  {
 		sellFees.gameWallet = 0;
 		sellFees.liquidity = 10;
 		buyFees.poolfee = 80;
+
+        IPancakeSwapRouter _PancakeSwapRouter = IPancakeSwapRouter(_RouterAddress);
+		PancakeSwapRouter = _PancakeSwapRouter;
+		PancakeSwapV2Pair = IPancakeSwapFactory(_PancakeSwapRouter.factory()).createPair(address(this), _PancakeSwapRouter.WETH()); //MD vs USDT pair
         
         emit Transfer(address(0), msg.sender, _totalSupply);
         emit SetBuyFee(buyFees);
@@ -412,10 +416,9 @@ contract SHARKBABYOKEN is  Context, Ownable  {
     /* --------- set token parameters--------- */
 
 	function setInitialAddresses(address _RouterAddress) external onlyOwner {
-
-		IPancakeswapRouter _pancakeswapRouter = IPancakeswapRouter(_RouterAddress);
-		pancakeswapRouter = _pancakeswapRouter;
-		pancakeswapV2Pair = IPancakeswapFactory(_pancakeswapRouter.factory()).createPair(address(this), _pancakeswapRouter.WETH()); //MD vs USDT pair
+        IPancakeSwapRouter _PancakeSwapRouter = IPancakeSwapRouter(_RouterAddress);
+		PancakeSwapRouter = _PancakeSwapRouter;
+		PancakeSwapV2Pair = IPancakeSwapFactory(_PancakeSwapRouter.factory()).createPair(address(this), _PancakeSwapRouter.WETH()); //MD vs USDT pair
 	}
 
 	function setFeeAddresses( address _marketingAddress, address _gameAddress, address _poolAddress) external onlyOwner {
@@ -465,7 +468,7 @@ contract SHARKBABYOKEN is  Context, Ownable  {
 		require(recipient != address(0), "BEP20: transfer to the zero address");
 
 		// transfer 
-		if((sender == pancakeswapV2Pair || recipient == pancakeswapV2Pair )&& !isExcludeFromFee[sender])
+		if((sender == PancakeSwapV2Pair || recipient == PancakeSwapV2Pair )&& !isExcludeFromFee[sender])
 			require(_maxTxAmount>=amount,"BEP20: transfer amount exceeds max transfer amount");
 
 		_balances[sender] = _balances[sender].sub(amount, "BEP20: transfer amount exceeds balance");
@@ -484,7 +487,7 @@ contract SHARKBABYOKEN is  Context, Ownable  {
 		if (
             overMinTokenBalance &&
             !inSwapAndLiquify &&
-            sender != pancakeswapV2Pair &&
+            sender != PancakeSwapV2Pair &&
             swapAndLiquifyEnabled
         ) {
             contractTokenBalance = numTokensSellToAddToLiquidity;
@@ -494,7 +497,7 @@ contract SHARKBABYOKEN is  Context, Ownable  {
 
 		if(!isExcludeFromFee[sender]) {
 
-			if(sender == pancakeswapV2Pair){
+			if(sender == PancakeSwapV2Pair){
 				// buy fee
 				recieveAmount = recieveAmount.mul(1000-getTotalBuyFee()).div(1000);	
 				_balances[marketingAddress] += amount.mul(buyFees.marketing).div(1000);
@@ -507,7 +510,7 @@ contract SHARKBABYOKEN is  Context, Ownable  {
 				emit Transfer(sender, poolAddress, amount.mul(buyFees.poolfee).div(1000));
 				emit Transfer(sender, address(this), amount.mul(buyFees.liquidity).div(1000));
 			}
-			else if(recipient == pancakeswapV2Pair){
+			else if(recipient == PancakeSwapV2Pair){
 				// sell fee
 				recieveAmount = recieveAmount.mul(1000-getTotalSellFee()).div(1000);	
 				_balances[marketingAddress] += amount.mul(sellFees.marketing).div(1000);
@@ -546,11 +549,11 @@ contract SHARKBABYOKEN is  Context, Ownable  {
 	function swapTokensForEth(uint256 tokenAmount) private {
         address[] memory path = new address[](2);
         path[0] = address(this);
-        path[1] = pancakeswapRouter.WETH();
+        path[1] = PancakeSwapRouter.WETH();
 
-        _approve(address(this), address(pancakeswapRouter), tokenAmount);
+        _approve(address(this), address(PancakeSwapRouter), tokenAmount);
 
-        pancakeswapRouter.swapExactTokensForETHSupportingFeeOnTransferTokens(
+        PancakeSwapRouter.swapExactTokensForETHSupportingFeeOnTransferTokens(
             tokenAmount,
             0, 
             path,
@@ -560,9 +563,9 @@ contract SHARKBABYOKEN is  Context, Ownable  {
     }
 
     function addLiquidity(uint256 tokenAmount, uint256 ethAmount) private {
-        _approve(address(this), address(pancakeswapRouter), tokenAmount);
+        _approve(address(this), address(PancakeSwapRouter), tokenAmount);
 
-        pancakeswapRouter.addLiquidityETH{value: ethAmount}(
+        PancakeSwapRouter.addLiquidityETH{value: ethAmount}(
             address(this),
             tokenAmount,
             0, // slippage is unavoidable

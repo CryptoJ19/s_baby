@@ -2,7 +2,7 @@
 //SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.6.12;
 
-interface IPancakeswapFactory {
+interface IPancakeSwapFactory {
 		event PairCreated(address indexed token0, address indexed token1, address pair, uint);
 
 		function feeTo() external view returns (address);
@@ -18,7 +18,7 @@ interface IPancakeswapFactory {
 		function setFeeToSetter(address) external;
 }
 
-interface IPancakeswapPair {
+interface IPancakeSwapPair {
 		event Approval(address indexed owner, address indexed spender, uint value);
 		event Transfer(address indexed from, address indexed to, uint value);
 
@@ -69,7 +69,7 @@ interface IPancakeswapPair {
 		function initialize(address, address) external;
 }
 
-interface IPancakeswapRouter{
+interface IPancakeSwapRouter{
 		function factory() external pure returns (address);
 		function WETH() external pure returns (address);
 

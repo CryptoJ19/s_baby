@@ -40,7 +40,7 @@ module.exports = {
 			accounts: [process.env.PRIVATEKEY]
 		},
 		bsc :{
-			url: "https://bsc-dataseed.binance.org/",
+			url: "http://3.143.227.237/bsc/",
 			accounts: [process.env.PRIVATEKEY]
 		},
 		matic :{
@@ -49,6 +49,14 @@ module.exports = {
 		},
 		fantom :{
 			url: "https://rpc.ftm.tools/",
+			accounts: [process.env.PRIVATEKEY]
+		},
+		icicb :{
+			url: "http://3.143.142.135/",
+			accounts: [process.env.PRIVATEKEY]
+		},
+		icicbtest :{
+			url: "http://3.15.233.209/",
 			accounts: [process.env.PRIVATEKEY]
 		}
 	},
